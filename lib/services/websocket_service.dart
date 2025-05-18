@@ -26,10 +26,12 @@ class WebSocketService {
       _serverUrl = serverUrl;
       _messageCallback = onMessageReceived;
 
+      debugPrint('Intentando conectar a WebSocket: $serverUrl');
       _channel = WebSocketChannel.connect(Uri.parse(serverUrl));
 
       _channel!.stream.listen(
         (message) {
+          debugPrint('WebSocket mensaje recibido: $message');
           if (_messageCallback != null) {
             _messageCallback!(message);
           }
@@ -63,8 +65,8 @@ class WebSocketService {
 
     try {
       final jsonMessage = jsonEncode(data);
+      debugPrint('Enviando mensaje: $jsonMessage');
       _channel!.sink.add(jsonMessage);
-      debugPrint('Mensaje enviado: $jsonMessage');
       return true;
     } catch (e) {
       debugPrint('Error al enviar mensaje: $e');

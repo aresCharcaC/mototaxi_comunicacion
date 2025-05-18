@@ -40,11 +40,15 @@ class NegotiationProvider extends ChangeNotifier {
 
   void processIncomingMessage(String message) {
     try {
+      debugPrint('NegotiationProvider processing message: $message');
       final data = jsonDecode(message);
+
       switch (data['type']) {
         case 'fare_offer':
+          debugPrint('Processing fare_offer');
           final offer = FareOffer.fromJson(data);
           addOffer(offer);
+          notifyListeners(); // Ensure listeners are notified
           break;
         case 'fare_counter_offer':
           final offer = FareOffer.fromJson(data);

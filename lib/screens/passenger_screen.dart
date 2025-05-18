@@ -13,6 +13,7 @@ import '../providers/user_role_provider.dart';
 import '../services/websocket_service.dart';
 import '../widgets/fare_adjustment_slider.dart';
 import '../widgets/offer_list.dart';
+import 'dart:convert';
 
 class PassengerScreen extends StatefulWidget {
   final String serverUrl;
@@ -457,19 +458,26 @@ class _PassengerScreenState extends State<PassengerScreen> {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       fromUserId: userProvider.userId,
       fromUserName: userProvider.name,
-      toUserId: 'all_drivers', // Oferta para todos los conductores
+      toUserId: 'all_drivers', // Offer for all drivers
       amount: _currentOffer,
       routeData: negotiationProvider.currentRoute!.toJson(),
       timestamp: DateTime.now(),
     );
 
-    // Enviar a través de WebSocket
-    _wsService.sendMessage(offer.toJson());
+    // Create message with explicit type field
+    final message = {
+      ...offer.toJson(),
+      'type': 'fare_offer', // Ensure this is explicitly set
+    };
 
-    // Añadir a la lista local
+    // Send through WebSocket
+    debugPrint('Sending fare offer: ${jsonEncode(message)}');
+    _wsService.sendMessage(message);
+
+    // Add to local list
     negotiationProvider.addOffer(offer);
 
-    // Actualizar estado de solicitud activa
+    // Update active request state
     setState(() {
       _hasActiveFareRequest = true;
     });

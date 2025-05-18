@@ -50,15 +50,19 @@ class _DriverScreenState extends State<DriverScreen> {
     );
 
     final connected = await _wsService.connect(widget.serverUrl, (message) {
-      // Procesar mensajes recibidos
+      // Process received messages
+      debugPrint("Mensaje recibido detallado en DriverScreen: $message");
       negotiationProvider.processIncomingMessage(message);
-      debugPrint("Mensaje recibido en DriverScreen: $message");
+
+      // Check if we have active requests after processing
+      _updateOffersFromProvider();
     });
 
     setState(() {
       _isConnected = connected;
     });
 
+    // Show connection status
     if (connected) {
       ScaffoldMessenger.of(
         context,
@@ -310,6 +314,45 @@ class _DriverScreenState extends State<DriverScreen> {
       }
     }
   }
+
+  void _updateOffersFromProvider() {
+    final negotiationProvider = Provider.of<NegotiationProvider>(
+      context,
+      listen: false,
+    );
+
+    // Force UI update when offers change
+    if (negotiationProvider.offers.isNotEmpty) {
+      setState(() {
+        // Just trigger a rebuild
+      });
+
+      debugPrint(
+        "Ofertas actualizadas en DriverScreen: ${negotiationProvider.offers.length}",
+      );
+      // Show a notification for new offers
+      for (final offer in negotiationProvider.offers) {
+        if (offer.status == OfferStatus.pending &&
+            offer.toUserId == 'all_drivers' &&
+            !_processedOfferIds.contains(offer.id)) {
+          _processedOfferIds.add(offer.id);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Nueva solicitud de ${offer.fromUserName}'),
+              action: SnackBarAction(
+                label: 'Ver',
+                onPressed: () => _showRouteDetails(offer),
+              ),
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // Add this property to track processed offers
+  final Set<String> _processedOfferIds = {};
 
   @override
   Widget build(BuildContext context) {
