@@ -5,13 +5,14 @@ import 'package:provider/provider.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'dart:math' show sin, cos, sqrt, atan2;
-import '../models/fare_offer.dart';
-import '../models/route_info.dart';
-import '../providers/negotiation_provider.dart';
-import '../providers/user_role_provider.dart';
-import '../services/websocket_service.dart';
-import '../widgets/offer_list.dart';
-import '../utils/format_utils.dart';
+import '../../models/fare_offer.dart';
+import '../../models/route_info.dart';
+import '../../providers/negotiation_provider.dart';
+import '../../providers/user_role_provider.dart';
+import '../../services/websocket_service.dart';
+import '../../widgets/offer_list.dart';
+import '../../widgets/counter_offer_dialog.dart';
+import '../../utils/format_utils.dart';
 
 class DriverScreen extends StatefulWidget {
   final String serverUrl;
@@ -83,52 +84,12 @@ class _DriverScreenState extends State<DriverScreen> {
   }
 
   void _showCounterOfferDialog(FareOffer passengerOffer) {
-    final TextEditingController counterOfferController = TextEditingController(
-      text: passengerOffer.amount.toStringAsFixed(2),
-    );
-
     showDialog(
       context: context,
       builder:
-          (context) => AlertDialog(
-            title: const Text('Hacer Contraoferta'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Oferta recibida: S/ ${passengerOffer.amount.toStringAsFixed(2)}',
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: counterOfferController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Tu contraoferta (S/)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('CANCELAR'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  final counterOfferValue = double.tryParse(
-                    counterOfferController.text,
-                  );
-                  if (counterOfferValue != null && counterOfferValue > 0) {
-                    _sendCounterOffer(passengerOffer, counterOfferValue);
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text('ENVIAR'),
-              ),
-            ],
+          (context) => CounterOfferDialog(
+            originalOffer: passengerOffer,
+            onSubmit: (amount) => _sendCounterOffer(passengerOffer, amount),
           ),
     );
   }
@@ -152,28 +113,20 @@ class _DriverScreenState extends State<DriverScreen> {
     }
 
     // Crear contraoferta
-    final counterOffer = FareOffer(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+    final counterOffer = negotiationProvider.createCounterOffer(
+      originalOffer,
       fromUserId: userProvider.userId,
       fromUserName: userProvider.name,
-      toUserId: originalOffer.fromUserId,
       amount: counterOfferAmount,
-      routeData: originalOffer.routeData,
-      timestamp: DateTime.now(),
     );
 
     // Configurar como contraoferta
-    final message = {
-      ...counterOffer.toJson(),
-      'type': 'fare_counter_offer',
-      'originalOfferId': originalOffer.id,
-    };
+    final message = {...counterOffer.toJson(), 'type': 'fare_counter_offer'};
 
     // Enviar a través de WebSocket
     _wsService.sendMessage(message);
 
-    // Añadir a la lista local
-    negotiationProvider.addOffer(counterOffer);
+    // La oferta ya se añadió en createCounterOffer
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -182,6 +135,9 @@ class _DriverScreenState extends State<DriverScreen> {
         ),
       ),
     );
+
+    // Mostrar los detalles de la ruta para referencia
+    _showRouteDetails(originalOffer);
   }
 
   void _showRouteDetails(FareOffer offer) {

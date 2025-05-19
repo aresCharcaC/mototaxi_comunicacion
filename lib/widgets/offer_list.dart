@@ -1,5 +1,4 @@
-// Archivo: lib/widgets/offer_list.dart (Actualizado con correcciones)
-
+// lib/widgets/offer_list.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/fare_offer.dart';
@@ -11,7 +10,6 @@ class OfferList extends StatelessWidget {
   final Function(FareOffer)? onAccept;
   final Function(FareOffer)? onReject;
   final Function(FareOffer)? onCounterOffer;
-  // NO se usa onTap aquí, sino que lo definimos a nivel de componente
 
   const OfferList({
     super.key,
@@ -60,10 +58,10 @@ class OfferList extends StatelessWidget {
         final offer = sortedOffers[index];
 
         // Determinar si la oferta es para/de este usuario según su rol
-        // En el contexto de prueba, todas las ofertas de pasajeros son para todos los conductores
         final bool isForThisUser =
             userRole == UserRole.driver
-                ? offer.toUserId == 'all_drivers'
+                ? offer.toUserId == 'all_drivers' ||
+                    offer.toUserId == 'your_driver_id'
                 : userRole == UserRole.passenger &&
                     offer.fromUserId != 'your_passenger_id';
 
@@ -73,8 +71,10 @@ class OfferList extends StatelessWidget {
                 : userRole == UserRole.driver &&
                     offer.toUserId == 'all_drivers';
 
+        // Determinar si es una contraoferta
+        final bool isCounterOffer = offer.offerType == OfferType.counter_offer;
+
         return GestureDetector(
-          // Aquí manejamos el tap directamente
           onTap: () {
             if (userRole == UserRole.driver) {
               // Si somos conductor, mostramos los detalles de la ruta al tocar
@@ -90,6 +90,7 @@ class OfferList extends StatelessWidget {
             userRole: userRole,
             isFromThisUser: isFromThisUser,
             isForThisUser: isForThisUser,
+            isCounterOffer: isCounterOffer,
             onAccept: onAccept,
             onReject: onReject,
             onCounterOffer: onCounterOffer,
@@ -119,6 +120,22 @@ class _RouteDetailScreen extends StatelessWidget {
               'Oferta: S/ ${offer.amount.toStringAsFixed(2)}',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
+            if (offer.offerType == OfferType.counter_offer)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Contraoferta',
+                  style: TextStyle(
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             const SizedBox(height: 20),
             Text(
               'Desde: ${offer.routeData['startPoint']['lat']}, ${offer.routeData['startPoint']['lng']}',
@@ -157,6 +174,7 @@ class OfferCard extends StatelessWidget {
   final UserRole userRole;
   final bool isFromThisUser;
   final bool isForThisUser;
+  final bool isCounterOffer;
   final Function(FareOffer)? onAccept;
   final Function(FareOffer)? onReject;
   final Function(FareOffer)? onCounterOffer;
@@ -167,6 +185,7 @@ class OfferCard extends StatelessWidget {
     required this.userRole,
     required this.isFromThisUser,
     required this.isForThisUser,
+    required this.isCounterOffer,
     this.onAccept,
     this.onReject,
     this.onCounterOffer,
@@ -178,7 +197,11 @@ class OfferCard extends StatelessWidget {
 
     // Color y alineación basados en quién envió el mensaje
     final bgColor =
-        isFromThisUser ? Colors.blue.shade50 : Colors.orange.shade50;
+        isFromThisUser
+            ? Colors.blue.shade50
+            : isCounterOffer
+            ? Colors.orange.shade50
+            : Colors.green.shade50;
 
     final alignment =
         isFromThisUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
@@ -227,7 +250,8 @@ class OfferCard extends StatelessWidget {
               children: [
                 if (!isFromThisUser) ...[
                   CircleAvatar(
-                    backgroundColor: Colors.orange,
+                    backgroundColor:
+                        isCounterOffer ? Colors.orange : Colors.green,
                     radius: 16,
                     child: Icon(
                       userRole == UserRole.passenger
@@ -251,7 +275,8 @@ class OfferCard extends StatelessWidget {
                 if (isFromThisUser) ...[
                   const SizedBox(width: 8),
                   CircleAvatar(
-                    backgroundColor: Colors.blue,
+                    backgroundColor:
+                        isCounterOffer ? Colors.orange : Colors.blue,
                     radius: 16,
                     child: Icon(
                       userRole == UserRole.passenger
@@ -264,6 +289,26 @@ class OfferCard extends StatelessWidget {
                 ],
               ],
             ),
+
+            if (isCounterOffer) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange),
+                ),
+                child: Text(
+                  'Contraoferta a S/ ${offer.amount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.deepOrange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 12),
 

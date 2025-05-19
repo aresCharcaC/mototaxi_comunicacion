@@ -3,8 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_role_provider.dart';
-import 'passenger_screen.dart';
-import 'driver_screen.dart';
+import 'passenger/passenger_screen.dart';
+import 'driver/driver_screen.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
